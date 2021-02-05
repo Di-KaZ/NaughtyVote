@@ -14,7 +14,7 @@
 		"postinstall": "tsc",
 		"watch-node": "nodemon dist/index.js",
 		"watch-ts": "tsc -w",
-		"deploy": "git add . && git commit -m Heroku && git push heroku master"
+		"deploy": "git add . && git commit -m 'Heroku' && git push origin main"
 	},
 	"keywords": [
 		"bot"
@@ -22,6 +22,10 @@
 	"author": "GET_MOUSSED",
 	"license": "ISC",
 	"dependencies": {
-		"discord.js": "^12.5.1"
+		"discord.js": "^12.5.1",
+		"typescript": "^4.1.3"
+	},
+	"devDependencies": {
+		"typescript": "^4.1.3"
 	}
 }
