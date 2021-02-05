@@ -1,0 +1,27 @@
+{
+	"name": "notyvote",
+	"version": "0.0.1",
+	"description": "Un bot qui te notifie quand tu doit voter",
+	"main": "bot.ts",
+	"directories": {
+		"test": "test"
+	},
+	"engines": {
+		"node": "12.18.2"
+	},
+	"scripts": {
+		"start": "node dist/bot.js",
+		"postinstall": "tsc",
+		"watch-node": "nodemon dist/index.js",
+		"watch-ts": "tsc -w",
+		"deploy": "git add . && git commit -m Heroku && git push heroku master"
+	},
+	"keywords": [
+		"bot"
+	],
+	"author": "GET_MOUSSED",
+	"license": "ISC",
+	"dependencies": {
+		"discord.js": "^12.5.1"
+	}
+}
