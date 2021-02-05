@@ -24,6 +24,10 @@ let random_messages: string[] = [
 	`Dineau diktatur`,
 ];
 
+function print_info(msg: string) {
+	console.info(`[INFO][${new Date().toLocaleString()}] : ${msg}`);
+}
+
 let random_emote: string[] = [
 	'🤓',
 	'🥺',
@@ -86,6 +90,7 @@ const options_filter: AwaitReactionsOptions = {
 function naughtytify_this_guy(user: User) {
 	// if user already registered
 	if (voters.filter((voter) => voter.id === user.id).length !== 0) {
+		print_info(`user ${user.tag} already registered !`);
 		const voteMessage = new MessageEmbed();
 		voteMessage.setTitle(`Tu t'es deja enregistré ! ${user.tag}`);
 		voteMessage.setDescription(`Tape '!stop' pour arreter d'etre notifié`);
@@ -107,7 +112,9 @@ function naughtytify_this_guy(user: User) {
 		timeout_id: -1,
 	});
 
+	print_info(`user ${user.tag} added. sending first notification !`);
 	// wait for the voters to vote and wait until the next one
+	print_info(`user : ${user.tag} registered`);
 	return user.send(voteMessage).then((message: Message) => {
 		message.react(random_emote[Math.floor(Math.random() * random_emote.length)]);
 		wait_confimation_of_vote(message, user);
@@ -124,6 +131,7 @@ function wait_confimation_of_vote(message: Message, user: User) {
 		.awaitReactions(user_filter, options_filter)
 		.then(() => {
 			message.delete();
+			print_info(`user ${user.tag} voted ! waiting until next vote !`);
 			timeout_id = setTimeout(wait_for_the_next_vote, vote_timeout, user);
 			// this black magic get the id of the timeout, used to stop it if user want to stop being notified
 			// get the voter associed with the discor msg
@@ -137,6 +145,7 @@ function wait_confimation_of_vote(message: Message, user: User) {
 }
 
 function wait_for_the_next_vote(user: User) {
+	print_info(`sending notif to user ${user.tag}`);
 	const voteMessage = new MessageEmbed()
 		.setTitle(random_messages[Math.floor(Math.random() * random_messages.length)])
 		.setURL(website_url)
@@ -154,15 +163,18 @@ function wait_for_the_next_vote(user: User) {
 client.on('message', (message) => {
 	if (message.author.bot) return;
 	if (message.content === '!naughty') {
+		print_info(`user ${message.author.tag} called '!naughty'`);
 		return naughtytify_this_guy(message.author);
 	}
 	if (message.content === '!stop') {
+		print_info(`user ${message.author.tag} called '!stop'`);
 		return remove_voter(message.author);
 	}
 	if (
 		message.content.startsWith('!emoteadd') &&
 		(message.author.id === '375400233728999424' || message.author.id === '336248608091537417')
 	) {
+		print_info(`user ${message.author.tag} called '!emoteadd'`);
 		random_emote = [...random_emote, message.content[message.content.length - 1]];
 		console.log(random_emote);
 	}
@@ -170,6 +182,7 @@ client.on('message', (message) => {
 		message.content.startsWith('!phraseadd') &&
 		(message.author.id === '375400233728999424' || message.author.id === '336248608091537417')
 	) {
+		print_info(`user ${message.author.tag} called '!phraseadd'`);
 		random_messages = [...random_messages, message.content.substr(11)];
 		console.log(random_messages);
 	}
@@ -185,6 +198,7 @@ function remove_voter(user: User) {
 	let voter = voters.find((voter) => (voter.id = user.id));
 	// if no voter found
 	if (voter === undefined) {
+		print_info(`user ${user.tag} is not registered !`);
 		const voteMessage = new MessageEmbed();
 		voteMessage.setTitle(`Tu n'est pas enregistré ! ${user.tag}`);
 		voteMessage.setColor('RED');
@@ -193,6 +207,7 @@ function remove_voter(user: User) {
 			.send(voteMessage)
 			.then((message) => setTimeout((message: Message) => message.delete(), message_delete_timeout, message));
 	}
+	print_info(`stopped notification for ${user.tag} !`);
 	// clearing all the notification
 	clearTimeout(voter?.timeout_id);
 	// remove it from the list of voters
