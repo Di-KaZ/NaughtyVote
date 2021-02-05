@@ -10,9 +10,9 @@
 		"node": "12.18.2"
 	},
 	"scripts": {
-		"start": "node dist/bot.js",
+		"start": "node bot.js",
 		"postinstall": "tsc",
-		"watch-node": "nodemon dist/index.js",
+		"watch-node": "nodemon bot.js",
 		"watch-ts": "tsc -w",
 		"deploy": "git add . && git commit -m 'Heroku' && git push origin main"
 	},
