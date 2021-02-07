@@ -1,7 +1,7 @@
 export const MESSAGE_DELETE_TIMEOUT = 5000;
 
-export let VOTE_TIMEOUT = 5400000; // 1h30
-// export const VOTE_TIMEOUT = 15000;
+// export let VOTE_TIMEOUT = 5400000; // 1h30
+export const VOTE_TIMEOUT = 15000;
 
 export const WEBSITE_URL = 'https://serveur-prive.net/minecraft/politicraft-elu-meilleure-communaute-2021-442/vote';
 

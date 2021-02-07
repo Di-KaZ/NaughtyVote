@@ -1,7 +1,7 @@
 import { AwaitReactionsOptions, Message, MessageEmbed, User } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
-import { BOT_ID, print_info } from './bot';
+import { BOT_ID, print_info, RANDOM } from './bot';
 import {
 	DATA_FOLDER,
 	ERR_DATE_PASSED,
@@ -76,7 +76,11 @@ export default class Voter {
 				this.date_to_send_notif = new Date(new Date().getTime() + VOTE_TIMEOUT); // hmmm 🤔
 				// this black magic get the id of the timeout, used to stop it if user want to stop being notified
 				this.timeout_id = setTimeout(
-					this.sendNotification.bind(this, 'test', '😀'),
+					this.sendNotification.bind(
+						this,
+						RANDOM.texts[Math.floor(Math.random() * RANDOM.texts.length)],
+						RANDOM.emotes[Math.floor(Math.random() * RANDOM.emotes.length)],
+					),
 					this.date_to_send_notif.getTime() - new Date().getTime(),
 				);
 
@@ -137,10 +141,15 @@ export default class Voter {
 			return;
 		}
 		this.timeout_id = setTimeout(
-			this.sendNotification.bind(this, 'test', '😀'),
+			this.sendNotification.bind(
+				this,
+				RANDOM.texts[Math.floor(Math.random() * RANDOM.texts.length)],
+				RANDOM.emotes[Math.floor(Math.random() * RANDOM.emotes.length)],
+			),
 			this.date_to_send_notif!.getTime() - new Date().getTime(),
 		);
 	}
+
 	public getCreateDate(): Date {
 		return this.create_date;
 	}

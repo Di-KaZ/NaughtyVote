@@ -14,52 +14,13 @@ import {
 	STOP_SUCESS_DESC,
 	VOTE_DESC,
 } from './CONSTATNS';
+import { Random } from './Random';
 import { UserDTO } from './userDTO';
 import Voter from './Voter';
-
-let random_messages: string[] = [
-	"Va dormir c'est pas bien de voter la nuit !!!",
-	'Clan Iwi les beeestouilles',
-	"Lexie c'est vraiment la plus mimi 💕",
-	'Hélios, là où le soleil ne se couche plus',
-	'Voyage au Canada pas cher',
-	'Totem mais tes où ? Pas là mais tes où mais tes pas là',
-	'RUSKOV RUSKOV VODKA',
-	`Par ici bloc de quartz pour 0.1d !!!`,
-	`Dineau diktatur`,
-];
 
 export function print_info(msg: string) {
 	console.info(`[INFO][${new Date().toLocaleString()}] : ${msg}`);
 }
-
-let random_emote: string[] = [
-	'🤓',
-	'🥺',
-	'🥵',
-	'🥶',
-	'🤠',
-	'🤖',
-	'👀',
-	'🐼',
-	'🙊',
-	'🙉',
-	'🙈',
-	'🐛',
-	'🦑',
-	'🦧',
-	'🐏',
-	'🦚',
-	'🍑',
-	'💥',
-	'🍆',
-	'💦',
-	'🥞',
-	'🍔',
-	'🍕',
-	'🥙',
-	'🍾',
-];
 
 // Bot id used to differenciate users from the bot itself in filter
 export let BOT_ID: string | undefined = undefined;
@@ -82,8 +43,7 @@ export class NaughtyBot {
 	 * load stored data of voters
 	 */
 	public loadData() {
-		console.log(`Chargement des donées utilisateur...`);
-
+		print_info(`Chargement des donées utilisateur...`);
 		let voterDatas = fs.readdirSync(DATA_FOLDER);
 		voterDatas.forEach((voterData) => {
 			let userDTO: UserDTO = JSON.parse(
@@ -100,7 +60,7 @@ export class NaughtyBot {
 				this.voters = [...this.voters, new_voter];
 			});
 		});
-		console.log(`Chargement Terminé !`);
+		print_info(`Chargement Terminé !`);
 	}
 	/**
 	 * Run the bot
@@ -190,7 +150,10 @@ export class NaughtyBot {
 			new_voter.setNumberOfVote(exist.number_of_vote);
 		}
 		// sending the first notif
-		new_voter.sendNotification('test', '😉');
+		new_voter.sendNotification(
+			RANDOM.texts[Math.floor(Math.random() * RANDOM.texts.length)],
+			RANDOM.emotes[Math.floor(Math.random() * RANDOM.emotes.length)],
+		);
 
 		// add it to the registered voters
 		this.voters = [...this.voters, new_voter];
@@ -240,5 +203,7 @@ export class NaughtyBot {
 // }
 
 const naughty = new NaughtyBot();
+print_info(`Chargement du fichier random...`);
+export const RANDOM: Random = JSON.parse(fs.readFileSync(path.resolve('./random.json'), { encoding: 'utf8' }));
 
 naughty.run();
