@@ -56,6 +56,7 @@ export default class Voter {
 			.setDescription(`C'est l'heure de voter !`);
 		this.user.send(voteMessage).then((message: Message) => {
 			message.react(emote);
+			print_info(`Sending notif to : ${this.user.tag} wating confirmation`);
 			this.callBackConfimationOfVote(message);
 		});
 	}
@@ -75,6 +76,7 @@ export default class Voter {
 				// change the date wheb to send notif for storage
 				this.date_to_send_notif = new Date(new Date().getTime() + VOTE_TIMEOUT); // hmmm 🤔
 				// this black magic get the id of the timeout, used to stop it if user want to stop being notified
+				print_info(`${this.user.tag} confirmed ! until next time...`);
 				this.timeout_id = setTimeout(
 					this.sendNotification.bind(
 						this,
