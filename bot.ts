@@ -1,16 +1,17 @@
-import { AwaitReactionsOptions, Client, Message, MessageEmbed, User } from 'discord.js';
+import { Client, User } from 'discord.js';
+import { Command } from './Command';
+import {
+	ERR_DESC,
+	ERR_REGISTER,
+	ERR_STATS,
+	ERR_STOP,
+	HELP,
+	HELP_DESC,
+	STOP_SUCCESS,
+	STOP_SUCESS_DESC,
+	VOTE_DESC,
+} from './CONSTATNS';
 import Voter from './Voter';
-
-// Store registered voters
-let voters: Voter[] = [];
-
-// timeout beforer messages getting deleted
-const message_delete_timeout = 5000;
-
-const vote_timeout = 5400000;
-
-// url of the vote
-const website_url = 'https://serveur-prive.net/minecraft/politicraft-elu-meilleure-communaute-2021-442/vote';
 
 let random_messages: string[] = [
 	"Va dormir c'est pas bien de voter la nuit !!!",
@@ -24,7 +25,7 @@ let random_messages: string[] = [
 	`Dineau diktatur`,
 ];
 
-function print_info(msg: string) {
+export function print_info(msg: string) {
 	console.info(`[INFO][${new Date().toLocaleString()}] : ${msg}`);
 }
 
@@ -56,160 +57,136 @@ let random_emote: string[] = [
 	'🍾',
 ];
 
-const client = new Client();
-client.login(process.env.BOT_TOKEN);
+// Bot id used to differenciate users from the bot itself in filter
+export let BOT_ID: string | undefined = undefined;
 
-client.on('ready', () => {
-	console.log(`Connecté en tant que ${client.user?.tag}`);
-	client.user?.setPresence({ activity: { name: '!naughty | !stop' } });
-});
+export class NaughtyBot {
+	private client: Client;
 
-/**
- * check if an use different from the bot reacted
- * @param reaction reaction to check
- * @param user user that reacted
- * @returns
- */
-function user_filter({}: any, user: User): boolean {
-	return user.id !== client.user?.id;
-}
+	private commands: Command[];
 
-/**
- * Configuration used for waiting reaction on the bot message
- * only one is necessary
- */
-const options_filter: AwaitReactionsOptions = {
-	max: 1,
-};
+	private voters: Voter[];
 
-/**
- * send the first notif of vote
- * @param user
- * @returns
- */
-function naughtytify_this_guy(user: User) {
-	// if user already registered
-	if (voters.filter((voter) => voter.id === user.id).length !== 0) {
-		print_info(`user ${user.tag} already registered !`);
-		const voteMessage = new MessageEmbed();
-		voteMessage.setTitle(`Tu t'es deja enregistré ! ${user.tag}`);
-		voteMessage.setDescription(`Tape '!stop' pour arreter d'etre notifié`);
-		voteMessage.setColor('RED');
-		user.send(voteMessage).then((message) =>
-			setTimeout((message: Message) => message.delete(), message_delete_timeout, message),
+	constructor() {
+		this.client = new Client();
+		this.client.login(process.env.BOT_TOKEN);
+		this.voters = [];
+		this.commands = [];
+	}
+
+	/**
+	 * Run the bot
+	 */
+	public run() {
+		// register commands
+		this.commands = [
+			{ commandtxt: '!nhelp', execute: this.help.bind(this) },
+			{ commandtxt: '!naughty', execute: this.naughty.bind(this) },
+			{ commandtxt: '!nstats', execute: this.stats.bind(this) },
+			{ commandtxt: '!nstop', execute: this.stop.bind(this) },
+		];
+
+		// set client presence
+		this.client.on('ready', () => {
+			console.log(`Connecté en tant que ${this.client.user?.tag}`);
+			BOT_ID = this.client.user?.id;
+			this.client.user?.setPresence({ activity: { name: '!nhelp' } });
+		});
+
+		this.client.on('message', (message) => {
+			// bot message dont do anything
+			if (message.author.bot) return;
+
+			// execute the command if one match
+			this.commands.forEach((command) => {
+				if (message.content === command.commandtxt) {
+					print_info(`user : '${message.author.tag}' is calling : '${command.commandtxt}'`);
+					command.execute(message.author);
+				}
+			});
+		});
+	}
+
+	/**
+	 * return a voter correspondinf to the user if not existing null
+	 * @param user
+	 * @returns
+	 */
+	public getVoter(user: User): Voter | null {
+		let temp = this.voters.filter((voter) => voter.getId() === user.id)[0];
+
+		if (temp === undefined) {
+			return null;
+		}
+		return temp;
+	}
+
+	/**
+	 * print help message
+	 * @param user
+	 */
+	public help(user: User): void {
+		Voter.sendEphemeralNoVoter(user, HELP, 'GREEN', HELP_DESC, 10000);
+	}
+
+	/**
+	 * register user and send first notif
+	 * @param user
+	 */
+	public naughty(user: User): void {
+		if (this.getVoter(user) !== null) {
+			Voter.sendEphemeralNoVoter(user, ERR_REGISTER, 'RED', ERR_DESC, null);
+			return;
+		}
+		// create new user
+		let new_voter = new Voter(user, 0);
+
+		// sending the first notif
+		new_voter.sendNotification('test', '😉');
+
+		// add it to the registered voters
+		this.voters = [...this.voters, new_voter];
+	}
+
+	/**
+	 * stop send notif for user
+	 * @param user
+	 */
+	public stop(user: User): void {
+		let voter = this.getVoter(user);
+
+		if (voter === null) {
+			Voter.sendEphemeralNoVoter(user, ERR_STOP, 'RED', ERR_DESC, null);
+			return;
+		}
+
+		voter.sendEphemeral(STOP_SUCCESS, 'GREEN', STOP_SUCESS_DESC, null);
+		// removing from voters
+		clearTimeout(voter.getTimeout());
+		this.voters = [...this.voters.filter((voter) => voter.getId() !== user.id)];
+	}
+
+	public stats(user: User): void {
+		let voter = this.getVoter(user);
+
+		if (voter === null) {
+			Voter.sendEphemeralNoVoter(user, ERR_STATS, 'RED', ERR_DESC, null);
+			return;
+		}
+
+		voter.sendEphemeral(
+			`Voici tes Stats :\n` +
+				`Tu as rejoint le ${voter.getCreateDate().toLocaleString()}\n` +
+				`Tu as voté ${voter.getNumberOfVote()} fois depuis !`,
+			'BLUE',
+			VOTE_DESC,
+			15000,
 		);
-		return;
 	}
-
-	// else add it to the voters lists
-	const voteMessage = new MessageEmbed()
-		.setTitle(random_messages[Math.floor(Math.random() * random_messages.length)])
-		.setURL(website_url)
-		.setDescription(`C'est l'heure de voter !`);
-
-	voters.push({
-		id: user.id,
-		timeout_id: -1,
-	});
-
-	print_info(`user ${user.tag} added. sending first notification !`);
-	// wait for the voters to vote and wait until the next one
-	print_info(`user : ${user.tag} registered`);
-	return user.send(voteMessage).then((message: Message) => {
-		message.react(random_emote[Math.floor(Math.random() * random_emote.length)]);
-		wait_confimation_of_vote(message, user);
-	});
 }
 
-/**
- * waiting confirnmation of vote from user on the bot message
- * @param message
- */
-function wait_confimation_of_vote(message: Message, user: User) {
-	let timeout_id: number = -1;
-	message
-		.awaitReactions(user_filter, options_filter)
-		.then(() => {
-			message.delete();
-			print_info(`user ${user.tag} voted ! waiting until next vote !`);
-			timeout_id = setTimeout(wait_for_the_next_vote, vote_timeout, user);
-			// this black magic get the id of the timeout, used to stop it if user want to stop being notified
-			// get the voter associed with the discor msg
-			const voter = voters.find((voter) => (voter.id = user.id));
-			// set his timeout id to the newly timer
-			voter!.timeout_id = timeout_id;
-			// update the voters list
-			voters = [...voters.filter((voter) => voter.id != user.id), <Voter>voter];
-		})
-		.catch();
-}
+// entry point
 
-function wait_for_the_next_vote(user: User) {
-	print_info(`sending notif to user ${user.tag}`);
-	const voteMessage = new MessageEmbed()
-		.setTitle(random_messages[Math.floor(Math.random() * random_messages.length)])
-		.setURL(website_url)
-		.setDescription(`C'est l'heure de voter !`);
+const naughty = new NaughtyBot();
 
-	return user.send(voteMessage).then((message: Message) => {
-		message.react(random_emote[Math.floor(Math.random() * random_emote.length)]);
-		wait_confimation_of_vote(message, user);
-	});
-}
-
-/**
- * Wait that a user want to be nauthyfied 😏
- */
-client.on('message', (message) => {
-	if (message.author.bot) return;
-	if (message.content === '!naughty') {
-		print_info(`user ${message.author.tag} called '!naughty'`);
-		return naughtytify_this_guy(message.author);
-	}
-	if (message.content === '!stop') {
-		print_info(`user ${message.author.tag} called '!stop'`);
-		return remove_voter(message.author);
-	}
-	if (
-		message.content.startsWith('!emoteadd') &&
-		(message.author.id === '375400233728999424' || message.author.id === '336248608091537417')
-	) {
-		print_info(`user ${message.author.tag} called '!emoteadd'`);
-		random_emote = [...random_emote, message.content[message.content.length - 1]];
-		console.log(random_emote);
-	}
-	if (
-		message.content.startsWith('!phraseadd') &&
-		(message.author.id === '375400233728999424' || message.author.id === '336248608091537417')
-	) {
-		print_info(`user ${message.author.tag} called '!phraseadd'`);
-		random_messages = [...random_messages, message.content.substr(11)];
-		console.log(random_messages);
-	}
-});
-
-/**
- * stop notif for this user
- * @param user
- * @returns
- */
-function remove_voter(user: User) {
-	// getting the voter
-	let voter = voters.find((voter) => (voter.id = user.id));
-	// if no voter found
-	if (voter === undefined) {
-		print_info(`user ${user.tag} is not registered !`);
-		const voteMessage = new MessageEmbed();
-		voteMessage.setTitle(`Tu n'est pas enregistré ! ${user.tag}`);
-		voteMessage.setColor('RED');
-		voteMessage.setDescription("Tape **!naugthy** pour t'enregistrer 😎");
-		return user
-			.send(voteMessage)
-			.then((message) => setTimeout((message: Message) => message.delete(), message_delete_timeout, message));
-	}
-	print_info(`stopped notification for ${user.tag} !`);
-	// clearing all the notification
-	clearTimeout(voter?.timeout_id);
-	// remove it from the list of voters
-	voters = voters.filter((voter) => voter.id != user.id);
-}
+naughty.run();
