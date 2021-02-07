@@ -1,6 +1,6 @@
 {
-	"name": "notyvote",
-	"version": "0.0.1",
+	"name": "naughtyvote",
+	"version": "0.1.0",
 	"description": "Un bot qui te notifie quand tu doit voter",
 	"main": "bot.ts",
 	"directories": {

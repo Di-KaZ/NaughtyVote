@@ -1,12 +1,22 @@
 import { AwaitReactionsOptions, Message, MessageEmbed, User } from 'discord.js';
+import * as fs from 'fs';
+import * as path from 'path';
 import { BOT_ID, print_info } from './bot';
-import { MESSAGE_DELETE_TIMEOUT, VOTE_TIMEOUT, WEBSITE_URL } from './CONSTATNS';
+import {
+	DATA_FOLDER,
+	ERR_DATE_PASSED,
+	ERR_DATE_PASSED_DESC,
+	MESSAGE_DELETE_TIMEOUT,
+	VOTE_TIMEOUT,
+	WEBSITE_URL,
+} from './CONSTATNS';
 
 export default class Voter {
 	private user: User;
 	private create_date: Date;
 	private timeout_id: any;
 	private number_of_vote: number;
+	private date_to_send_notif: Date | null;
 
 	/**
 	 * Configuration used for waiting reaction on the bot message
@@ -16,12 +26,12 @@ export default class Voter {
 		max: 1,
 	};
 
-	// TODO add file reading to save datas
-	constructor(user: User, number_of_vote: number) {
+	constructor(user: User, number_of_vote: number, create_date: Date, date_tosend_notif: Date | null) {
 		this.user = user;
 		this.timeout_id = -1;
 		this.number_of_vote = number_of_vote;
-		this.create_date = new Date();
+		this.create_date = create_date;
+		this.date_to_send_notif = date_tosend_notif;
 	}
 
 	/**
@@ -46,7 +56,7 @@ export default class Voter {
 			.setDescription(`C'est l'heure de voter !`);
 		this.user.send(voteMessage).then((message: Message) => {
 			message.react(emote);
-			this.callBackConfimationOfVote(message, null);
+			this.callBackConfimationOfVote(message);
 		});
 	}
 
@@ -55,18 +65,22 @@ export default class Voter {
 	 * if timer is not null using this on instead of constant 1h30
 	 * @param message
 	 */
-	public callBackConfimationOfVote(message: Message, timeout: number | null) {
+	public callBackConfimationOfVote(message: Message) {
 		message
 			.awaitReactions(Voter.user_filter, Voter.options_filter)
 			.then(() => {
 				message.delete();
 				// add one vote to the total of votes
 				this.number_of_vote += 1;
+				// change the date wheb to send notif for storage
+				this.date_to_send_notif = new Date(new Date().getTime() + VOTE_TIMEOUT); // hmmm 🤔
 				// this black magic get the id of the timeout, used to stop it if user want to stop being notified
 				this.timeout_id = setTimeout(
 					this.sendNotification.bind(this, 'test', '😀'),
-					timeout !== null ? timeout : VOTE_TIMEOUT,
+					this.date_to_send_notif.getTime() - new Date().getTime(),
 				);
+
+				this.saveToFile();
 			})
 			.catch((reason) => print_info(`Something went wrong : '${reason}'.`));
 	}
@@ -97,8 +111,42 @@ export default class Voter {
 		});
 	}
 
+	private saveToFile(): void {
+		fs.writeFile(
+			path.resolve(DATA_FOLDER, this.user.tag.replace('#', '.').replace(' ', '_') + '.json'),
+			JSON.stringify({
+				id: this.user.id,
+				create_date: this.create_date.getTime(),
+				number_of_vote: this.number_of_vote,
+				date_to_send_notif: this.date_to_send_notif!.getTime(),
+			}),
+			(err) => {
+				if (err) {
+					print_info(`${err}`);
+				}
+			},
+		);
+	}
+
+	/**
+	 * restore timeout via the data file of this voter
+	 */
+	public restoreTimeout(): void {
+		if (this.date_to_send_notif!.getTime() - new Date().getTime() < 0) {
+			this.sendEphemeral(ERR_DATE_PASSED, 'RED', ERR_DATE_PASSED_DESC, 60000);
+			return;
+		}
+		this.timeout_id = setTimeout(
+			this.sendNotification.bind(this, 'test', '😀'),
+			this.date_to_send_notif!.getTime() - new Date().getTime(),
+		);
+	}
 	public getCreateDate(): Date {
 		return this.create_date;
+	}
+
+	public setCreateDate(date: Date): void {
+		this.create_date = date;
 	}
 
 	public getNumberOfVote(): number {
@@ -111,5 +159,9 @@ export default class Voter {
 
 	public getTimeout(): any {
 		return this.timeout_id;
+	}
+
+	public setNumberOfVote(nb: number) {
+		this.number_of_vote = nb;
 	}
 }

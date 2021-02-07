@@ -1,6 +1,9 @@
 import { Client, User } from 'discord.js';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Command } from './Command';
 import {
+	DATA_FOLDER,
 	ERR_DESC,
 	ERR_REGISTER,
 	ERR_STATS,
@@ -11,6 +14,7 @@ import {
 	STOP_SUCESS_DESC,
 	VOTE_DESC,
 } from './CONSTATNS';
+import { UserDTO } from './userDTO';
 import Voter from './Voter';
 
 let random_messages: string[] = [
@@ -75,6 +79,30 @@ export class NaughtyBot {
 	}
 
 	/**
+	 * load stored data of voters
+	 */
+	public loadData() {
+		console.log(`Chargement des donées utilisateur...`);
+
+		let voterDatas = fs.readdirSync(DATA_FOLDER);
+		voterDatas.forEach((voterData) => {
+			let userDTO: UserDTO = JSON.parse(
+				fs.readFileSync(path.resolve(DATA_FOLDER, voterData), { encoding: 'utf8' }),
+			);
+			this.client.users.fetch(userDTO.id).then((user) => {
+				let new_voter = new Voter(
+					user,
+					userDTO.number_of_vote,
+					new Date(userDTO.create_date),
+					new Date(userDTO.date_to_send_notif),
+				);
+				new_voter.restoreTimeout();
+				this.voters = [...this.voters, new_voter];
+			});
+		});
+		console.log(`Chargement Terminé !`);
+	}
+	/**
 	 * Run the bot
 	 */
 	public run() {
@@ -90,6 +118,7 @@ export class NaughtyBot {
 		this.client.on('ready', () => {
 			console.log(`Connecté en tant que ${this.client.user?.tag}`);
 			BOT_ID = this.client.user?.id;
+			this.loadData();
 			this.client.user?.setPresence({ activity: { name: '!nhelp' } });
 		});
 
@@ -121,6 +150,21 @@ export class NaughtyBot {
 		return temp;
 	}
 
+	public getExistingData(user: User): UserDTO | null {
+		let resData: UserDTO | null = null;
+		try {
+			if (fs.existsSync(path.resolve(DATA_FOLDER, user.tag.replace('#', '.').replace(' ', '_') + '.json'))) {
+				resData = JSON.parse(
+					fs.readFileSync(path.resolve(DATA_FOLDER, user.tag.replace('#', '.').replace(' ', '_') + '.json'), {
+						encoding: 'utf8',
+					}),
+				);
+			}
+		} catch (err) {
+			print_info(err);
+		}
+		return resData;
+	}
 	/**
 	 * print help message
 	 * @param user
@@ -139,8 +183,12 @@ export class NaughtyBot {
 			return;
 		}
 		// create new user
-		let new_voter = new Voter(user, 0);
-
+		let exist = this.getExistingData(user);
+		let new_voter = new Voter(user, 0, new Date(), null);
+		if (exist !== null) {
+			new_voter.setCreateDate(new Date(exist.create_date));
+			new_voter.setNumberOfVote(exist.number_of_vote);
+		}
 		// sending the first notif
 		new_voter.sendNotification('test', '😉');
 
@@ -186,6 +234,10 @@ export class NaughtyBot {
 }
 
 // entry point
+
+// if (process.env.DEBUG) {
+// 	VOTE_TIMEOUT = 15000;
+// }
 
 const naughty = new NaughtyBot();
 
