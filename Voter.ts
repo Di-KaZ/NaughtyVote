@@ -140,8 +140,10 @@ export default class Voter {
 	public restoreTimeout(): void {
 		if (this.date_to_send_notif!.getTime() - new Date().getTime() < 0) {
 			this.sendEphemeral(ERR_DATE_PASSED, 'RED', ERR_DATE_PASSED_DESC, 60000);
+			print_info(`Unable to restore timer for ${this.user.tag}.`);
 			return;
 		}
+		print_info(`Restored timer for ${this.user.tag}. Date : ${this.date_to_send_notif}.`);
 		this.timeout_id = setTimeout(
 			this.sendNotification.bind(
 				this,
